@@ -13,7 +13,8 @@ async function main() {
     // コントラクトが Mint され、ローカルのブロックチェーンにデプロイされるまで待ちます。
     await web3mint.deployed();
 
-    // コントラクトアドレスをコンソールに出力 → テストネットで使う。→ 0x5FbDB2315678afecb367f032d93F642f64180aa3
+    // コントラクトアドレスをコンソールに出力 → テストネットで使う。
+    // npx hardhat run scripts/deploy.ts --network sepolia → 0x0f85C6D6D721a09Bbe809a4ace0D523CdE1520A7
     console.log('Contract deployed to : ', web3mint.address);
 
     let nftName: string = 'rumu';
