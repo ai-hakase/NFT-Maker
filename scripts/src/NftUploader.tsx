@@ -6,6 +6,7 @@ import ImageLogo from './image.svg';
 import { Button } from '@mui/material';
 import './NftUploader.css';
 import { ethers } from 'ethers';
+import { abi } from './utils/Web3Mint.json';
 
 // Metamask プロバイダーの追加
 import { MetaMaskInpageProvider } from '@metamask/providers';
@@ -55,14 +56,33 @@ const NftUploader = () => {
         }
     };
 
-    const askContractToMintNft = (ipfs: string) => {
+    /** コントラクトとWebサイトを連動させ、mintIpfsNFT関数を呼び出し */
+    const askContractToMintNft = async (ipfs: string) => {
         try {
             const ethereum = checkIfWalletIsConnected();
-            const contractAddress =
+            const CONTRACT_ADDRESS =
                 '0x0f85C6D6D721a09Bbe809a4ace0D523CdE1520A7';
             const contractAbi = abi.abi;
 
             if (ethereum) {
+                const provider = new ethers.BrowserProvider(ethereum);
+                const signer = await provider.getSigner();
+
+                // Ethers を使用して コントラクトに接続
+                const web3MintContract = new ethers.Contract(
+                    CONTRACT_ADDRESS,
+                    contractAbi,
+                    signer
+                );
+
+                // トランザクションがマイニングされ 承認 を待ってから Wait で実行する。
+                let txn = await web3MintContract.mintIpfsNFT('test1', 'ipfs1');
+                await txn.wait();
+                console.log(
+                    `Mined, see transaction: https://sepolia.etherscan.io/tx/${txn.hash}`
+                );
+            } else {
+                console.log("Ethereum object doesn't exist!");
             }
         } catch (err) {
             console.log(err);
