@@ -6,7 +6,9 @@ import ImageLogo from './image.svg';
 import { Button } from '@mui/material';
 import './NftUploader.css';
 import { ethers } from 'ethers';
-import { abi } from './utils/Web3Mint.json';
+import abi from './utils/Web3Mint.json';
+// 画像をIPFSにアップロードしてCIDを返してもらう機能
+import { Web3Storage } from 'web3.storage';
 
 // Metamask プロバイダーの追加
 import { MetaMaskInpageProvider } from '@metamask/providers';
@@ -57,7 +59,7 @@ const NftUploader = () => {
     };
 
     /** コントラクトとWebサイトを連動させ、mintIpfsNFT関数を呼び出し */
-    const askContractToMintNft = async (ipfs: string) => {
+    const askContractToMintNft = async (ipfs: any) => {
         try {
             const ethereum = checkIfWalletIsConnected();
             const CONTRACT_ADDRESS =
@@ -74,9 +76,15 @@ const NftUploader = () => {
                     contractAbi,
                     signer
                 );
+                console.log(
+                    'Going to pop wallet now to pay gas... : ',
+                    web3MintContract
+                );
 
                 // トランザクションがマイニングされ 承認 を待ってから Wait で実行する。
-                let txn = await web3MintContract.mintIpfsNFT('test1', 'ipfs1');
+                let txn = await web3MintContract.mintIpfsNFT('test2', ipfs);
+                console.log('Mining...please wait.');
+
                 await txn.wait();
                 console.log(
                     `Mined, see transaction: https://sepolia.etherscan.io/tx/${txn.hash}`
@@ -89,6 +97,41 @@ const NftUploader = () => {
         }
     };
 
+    // Web3Storage API を定義
+
+    /** Image から IPFS の変換 File を作り出し、askContractToMintNft にIPFS のファイルを渡し実行 */
+    // target: HTMLImageElement
+    const imageToNFT = async (e: any) => {
+        const API_KEY =
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDJkNjIzMDJjMmZFMDE5NDUyQTJBZTFDOERlNDQzZWZBMzgwM2NDZjQiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2ODI3NjM2Mjk4MzgsIm5hbWUiOiJORlQtTWFrZXItQVBJIn0.RKzJTfWtd3Sfbv20AMw3b3NAFQVXwCmY9b9NvWEZRkc';
+
+        // クライアントをインスタンス化
+        const web3StorageClient = new Web3Storage({ token: API_KEY });
+        const image = e.target;
+
+        // web3.storageにファイルをアップロードします。 第２引数：オプション
+        // ファイルはクライアントでハッシュ化され、1つのContent Addressed Archive(CAR)としてアップロードされます。
+        const rootCid = await web3StorageClient.put(image.files, {
+            name: 'test',
+            maxRetries: 3, // アップロードに失敗した場合に再試行する最大回数。デフォルト：5
+        });
+
+        // アップしたIPFSのCid を取得する (Put した際に、RootCid に Cid が格納されている。)
+        const cidResponse = await web3StorageClient.get(rootCid);
+
+        // CID から ファイルを取得する。
+        const IPFSFiles = await cidResponse?.files();
+
+        // ファイルの数だけ、コントラクトから NFT を Mint する。
+        if (IPFSFiles) {
+            for (const IPFS of IPFSFiles) {
+                askContractToMintNft(IPFS);
+                console.log('IPFS.cid : ', IPFS.cid);
+            }
+        }
+    };
+
+    // MetaMask に未接続なら ボタンをレンダーする
     const renderNotConnectedContainer = () => (
         <button
             onClick={connectWallet}
@@ -98,10 +141,12 @@ const NftUploader = () => {
         </button>
     );
 
+    // レンダリング時にアカウント接続を実行
     useEffect(() => {
         connectWallet();
     }, []);
 
+    // 画像アップロードページをレンダー
     return (
         <div className='outerBox'>
             {/* Wallet に接続されていなければ接続ボタンを表示 */}
@@ -127,6 +172,7 @@ const NftUploader = () => {
                     name='imageURL'
                     type='file'
                     accept='.jpg , .jpeg , .png'
+                    onChange={imageToNFT}
                 />
             </div>
 
@@ -142,6 +188,7 @@ const NftUploader = () => {
                     name='imageURL'
                     type='file'
                     accept='.jpg , .jpeg , .png'
+                    onChange={imageToNFT}
                 />
             </Button>
         </div>
