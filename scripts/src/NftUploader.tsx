@@ -81,6 +81,8 @@ const NftUploader = () => {
                     web3MintContract
                 );
 
+                // 何故かここでトランザクションが閉じる #########################################################3
+
                 // トランザクションがマイニングされ 承認 を待ってから Wait で実行する。
                 let txn = await web3MintContract.mintIpfsNFT('test2', ipfs);
                 console.log('Mining...please wait.');
